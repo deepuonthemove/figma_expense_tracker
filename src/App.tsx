@@ -70,7 +70,7 @@ function App() {
             path="/list" 
             element={
               isAuthenticated ? (
-                <ExpenseList />
+                <ExpenseList onLogout={handleLogout} />
               ) : (
                 <Navigate to="/login" replace />
               )

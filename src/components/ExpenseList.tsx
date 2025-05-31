@@ -12,7 +12,11 @@ interface ExpenseWithReceiptUrl extends Expense {
   receiptUrlFull?: string;
 }
 
-export const ExpenseList = () => {
+interface ExpenseListProps {
+  onLogout?: () => Promise<void>;
+}
+
+export const ExpenseList = ({ onLogout }: ExpenseListProps = {}) => {
   const [expensesList, setExpensesList] = useState<ExpenseWithReceiptUrl[]>([])
   const [filteredExpenses, setFilteredExpenses] = useState<ExpenseWithReceiptUrl[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -38,6 +42,14 @@ export const ExpenseList = () => {
 
   const loadExpenses = async () => {
     try {
+      // Check if user is authenticated before loading expenses
+      const isAuth = await authService.isAuthenticated()
+      if (!isAuth) {
+        // If not authenticated, don't try to load expenses
+        setIsLoading(false)
+        return
+      }
+      
       const user = await account.get()
       const data = await expenses.list(user.$id)
       
@@ -139,7 +151,14 @@ export const ExpenseList = () => {
 
   const handleLogout = async () => {
     try {
-      await authService.logout()
+      // Call the onLogout prop if it exists to update App's authentication state
+      if (onLogout) {
+        await onLogout()
+      } else {
+        // If no onLogout prop, call authService.logout directly
+        await authService.logout()
+      }
+      
       // Clear the expenses list before navigating
       setExpensesList([])
       setFilteredExpenses([])

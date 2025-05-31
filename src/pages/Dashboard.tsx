@@ -20,6 +20,7 @@ import { useEffect, useState } from 'react'
 import { expenses } from '../services/expenses'
 import type { Expense } from '../services/expenses'
 import { account } from '../config/appwrite'
+import { authService } from '../services/auth'
 
 interface DashboardProps {
   onLogout: () => Promise<void>;
@@ -37,6 +38,14 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
   const loadExpenses = async () => {
     try {
+      // Check if user is authenticated before loading expenses
+      const isAuth = await authService.isAuthenticated()
+      if (!isAuth) {
+        // If not authenticated, don't try to load expenses
+        setIsLoading(false)
+        return
+      }
+      
       const user = await account.get()
       const data = await expenses.list(user.$id)
       setExpensesList(data)
