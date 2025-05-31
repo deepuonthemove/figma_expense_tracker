@@ -34,3 +34,13 @@ export const getUserId = async () => {
     return null
   }
 }
+
+// Helper function to get the current origin
+export const getCurrentOrigin = () => {
+  if (typeof window !== 'undefined') {
+    return window.location.origin
+  }
+  return process.env.NODE_ENV === 'production' 
+    ? 'https://figma-expense-tracker-mucp.vercel.app'
+    : 'http://localhost:5173'
+}
