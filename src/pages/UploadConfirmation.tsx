@@ -1,4 +1,4 @@
-import { Box, Button, Container, Heading, Text, VStack, Icon/*, useToast*/ } from '@chakra-ui/react'
+import { Box, Button, Container, Heading, Text, VStack, Icon, /*useToast*/ } from '@chakra-ui/react'
 import { useNavigate } from 'react-router-dom'
 import { Header } from '../components/Header'
 import { FiCheckCircle } from 'react-icons/fi'
