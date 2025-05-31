@@ -99,10 +99,6 @@ export const ExpenseList = ({ onLogout }: ExpenseListProps = {}) => {
     }
   }
 
-  const getReceiptUrl = (fileId: string) => {
-    return storageService.getFileUrl(fileId)
-  }
-
   const applyFilters = () => {
     let filtered = [...expensesList]
 
