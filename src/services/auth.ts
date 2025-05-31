@@ -30,18 +30,47 @@ class AuthService {
         throw new Error('Failed to create session')
       }
       
+      // Add a small delay to ensure session is fully established
+      await new Promise(resolve => setTimeout(resolve, 300))
+      
       // Try to get user details to verify authentication
-      try {
-        const user = await account.get()
-        // Store user in cache
-        this.currentUser = user as AuthUser
-      } catch (userError) {
-        console.warn('Could not fetch user after login:', userError)
-        // Don't throw here, as the session might still be valid
+      // Make multiple attempts if needed
+      let user = null
+      let attempts = 0
+      const maxAttempts = 3
+      
+      while (!user && attempts < maxAttempts) {
+        try {
+          user = await account.get()
+          // Store user in cache
+          this.currentUser = user as AuthUser
+          break
+        } catch (userError) {
+          console.warn(`Could not fetch user after login (attempt ${attempts + 1}):`, userError)
+          attempts++
+          if (attempts < maxAttempts) {
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, 300))
+          }
+        }
       }
       
       // Clear cached promises
       this.userPromise = null
+      
+      // If we couldn't get the user after multiple attempts, but we have a session,
+      // force a session refresh and try one more time
+      if (!user && session) {
+        try {
+          // Try to refresh the session state
+          await account.getSession('current')
+          user = await account.get()
+          this.currentUser = user as AuthUser
+        } catch (finalError) {
+          console.error('Final attempt to get user failed:', finalError)
+          // Still don't throw, as the session might be valid
+        }
+      }
       
       return session
     } catch (error: any) {
@@ -62,8 +91,21 @@ class AuthService {
       
       // Optionally create session immediately
       if (autoLogin) {
-        await account.createEmailPasswordSession(email, password)
-        this.currentUser = null // Clear cache
+        const session = await account.createEmailPasswordSession(email, password)
+        
+        // Add a small delay to ensure session is fully established
+        await new Promise(resolve => setTimeout(resolve, 300))
+        
+        // Try to get user details to verify authentication
+        try {
+          const authUser = await account.get()
+          this.currentUser = authUser as AuthUser
+        } catch (userError) {
+          console.warn('Could not fetch user after registration:', userError)
+          // Don't throw here, as the session might still be valid
+          this.currentUser = null
+        }
+        
         this.userPromise = null
       }
       
@@ -136,9 +178,15 @@ class AuthService {
 
   async isAuthenticated(): Promise<boolean> {
     try {
+      // Return true immediately if we have a cached user
+      if (this.currentUser) {
+        return true
+      }
+      
       // First check if we have an active session
+      let session = null
       try {
-        const session = await account.getSession('current')
+        session = await account.getSession('current')
         if (!session || !session.$id) {
           return false
         }
@@ -147,8 +195,34 @@ class AuthService {
         return false
       }
       
-      // Then try to get the user
-      const user = await this.getCurrentUser()
+      // Then try to get the user with retry logic
+      let user = null
+      let attempts = 0
+      const maxAttempts = 2
+      
+      while (!user && attempts < maxAttempts) {
+        try {
+          user = await this.getCurrentUser()
+          if (user) {
+            return true
+          }
+          
+          attempts++
+          if (attempts < maxAttempts) {
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, 300))
+          }
+        } catch (error) {
+          console.error(`Authentication check attempt ${attempts + 1} failed:`, error)
+          attempts++
+          if (attempts >= maxAttempts) {
+            return false
+          }
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, 300))
+        }
+      }
+      
       return user !== null
     } catch (error) {
       console.error('Authentication check error:', error)
