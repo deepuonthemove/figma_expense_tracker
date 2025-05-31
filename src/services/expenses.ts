@@ -1,7 +1,6 @@
 import { ID, Query } from 'appwrite'
-import { databases } from './config'
+import { databases, DATABASE_ID } from '../config/appwrite'
 
-const DATABASE_ID = 'expense-tracker'
 const COLLECTION_ID = 'expenses'
 
 export interface Expense {

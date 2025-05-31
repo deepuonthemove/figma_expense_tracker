@@ -24,9 +24,25 @@ class AuthService {
   async login({ email, password }: LoginCredentials) {
     try {
       const session = await account.createEmailPasswordSession(email, password)
-      // Clear cached user to force refresh
-      this.currentUser = null
+      
+      // Verify session was created successfully
+      if (!session || !session.$id) {
+        throw new Error('Failed to create session')
+      }
+      
+      // Try to get user details to verify authentication
+      try {
+        const user = await account.get()
+        // Store user in cache
+        this.currentUser = user as AuthUser
+      } catch (userError) {
+        console.warn('Could not fetch user after login:', userError)
+        // Don't throw here, as the session might still be valid
+      }
+      
+      // Clear cached promises
       this.userPromise = null
+      
       return session
     } catch (error: any) {
       console.error('Login error:', error)
@@ -91,6 +107,21 @@ class AuthService {
 
   private async fetchCurrentUser(): Promise<AuthUser | null> {
     try {
+      // First check if we have an active session
+      try {
+        const session = await account.getSession('current')
+        if (!session || !session.$id) {
+          console.log('No active session found')
+          this.currentUser = null
+          return null
+        }
+      } catch (sessionError) {
+        console.warn('Session check failed:', sessionError)
+        this.currentUser = null
+        return null
+      }
+      
+      // Now try to get the user
       const user = await account.get()
       this.currentUser = user as AuthUser
       return this.currentUser
@@ -104,8 +135,25 @@ class AuthService {
   }
 
   async isAuthenticated(): Promise<boolean> {
-    const user = await this.getCurrentUser()
-    return user !== null
+    try {
+      // First check if we have an active session
+      try {
+        const session = await account.getSession('current')
+        if (!session || !session.$id) {
+          return false
+        }
+      } catch (sessionError) {
+        console.warn('Session check failed in isAuthenticated:', sessionError)
+        return false
+      }
+      
+      // Then try to get the user
+      const user = await this.getCurrentUser()
+      return user !== null
+    } catch (error) {
+      console.error('Authentication check error:', error)
+      return false
+    }
   }
 
   async refreshUser(): Promise<AuthUser | null> {

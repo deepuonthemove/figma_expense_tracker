@@ -1,6 +1,8 @@
 import { Client, Account, Databases, Storage } from 'appwrite'
 
 // Initialize Appwrite client
+// Note: For production, consider using a custom domain as your API endpoint
+// to enable secure cookie-based sessions instead of localStorage
 const client = new Client()
   .setEndpoint('https://fra.cloud.appwrite.io/v1') // Replace with your Appwrite endpoint
   .setProject('682b0a6c0038c8da39e2') // Replace with your project ID

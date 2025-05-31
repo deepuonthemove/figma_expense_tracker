@@ -2,7 +2,7 @@ import { Box, Table, Thead, Tbody, Tr, Th, Td, Text, Badge, Heading, Button, use
 import { useEffect, useState } from 'react'
 import { expenses } from '../services/expenses'
 import type { Expense } from '../services/expenses'
-import { account } from '../services/config'
+import { account } from '../config/appwrite'
 
 export const ExpenseList = () => {
   const [expensesList, setExpensesList] = useState<Expense[]>([])

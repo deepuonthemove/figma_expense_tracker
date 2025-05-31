@@ -34,21 +34,60 @@ export const Login = ({ onLoginSuccess }: LoginProps) => {
     setIsLoading(true)
 
     try {
+      // First attempt login
       await authService.login({ email, password })
-      onLoginSuccess()
-      toast({
-        title: 'Login successful',
-        description: 'Welcome back!',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      })
+      
+      // Check authentication status with retry
+      let isAuth = false
+      let retryCount = 0
+      const maxRetries = 3
+      
+      while (!isAuth && retryCount < maxRetries) {
+        try {
+          isAuth = await authService.isAuthenticated()
+          if (isAuth) break
+          
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, 500))
+          retryCount++
+        } catch (authCheckError) {
+          console.warn(`Auth check attempt ${retryCount + 1} failed:`, authCheckError)
+          retryCount++
+          if (retryCount >= maxRetries) throw authCheckError
+        }
+      }
+      
+      if (isAuth) {
+        onLoginSuccess()
+        toast({
+          title: 'Login successful',
+          description: 'Welcome back!',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        })
+      } else {
+        throw new Error('Authentication verification failed. Please try again.')
+      }
     } catch (error: any) {
+      console.error('Login error:', error)
+      
+      // Provide more specific error messages based on error type
+      let errorMessage = 'Please check your email and password'
+      
+      if (error.message.includes('Authentication verification failed')) {
+        errorMessage = 'Your login was processed, but we could not verify your session. Please try again.'
+      } else if (error.code === 401) {
+        errorMessage = 'Invalid email or password'
+      } else if (error.code === 429) {
+        errorMessage = 'Too many login attempts. Please try again later.'
+      }
+      
       toast({
         title: 'Login failed',
-        description: error.message || 'Please check your email and password',
+        description: errorMessage,
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       })
     } finally {
@@ -61,24 +100,71 @@ export const Login = ({ onLoginSuccess }: LoginProps) => {
     setIsLoading(true)
 
     try {
-      await authService.register({ email, password, name })
-      toast({
-        title: 'Registration successful',
-        description: 'Please log in with your credentials',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      })
-      // Clear form
-      setEmail('')
-      setPassword('')
-      setName('')
+      // Create user account and attempt auto-login
+      await authService.register({ email, password, name }, true)
+      
+      // Check authentication status with retry
+      let isAuth = false
+      let retryCount = 0
+      const maxRetries = 3
+      
+      while (!isAuth && retryCount < maxRetries) {
+        try {
+          isAuth = await authService.isAuthenticated()
+          if (isAuth) break
+          
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, 500))
+          retryCount++
+        } catch (authCheckError) {
+          console.warn(`Auth check attempt ${retryCount + 1} failed:`, authCheckError)
+          retryCount++
+          if (retryCount >= maxRetries) throw authCheckError
+        }
+      }
+      
+      if (isAuth) {
+        onLoginSuccess() // Automatically log in after registration
+        toast({
+          title: 'Registration successful',
+          description: 'Welcome to Expense Tracker!',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        })
+      } else {
+        // Registration succeeded but auto-login failed
+        toast({
+          title: 'Registration successful',
+          description: 'Your account was created, but we could not log you in automatically. Please try logging in.',
+          status: 'warning',
+          duration: 5000,
+          isClosable: true,
+        })
+        // Clear form
+        setEmail('')
+        setPassword('')
+        setName('')
+      }
     } catch (error: any) {
+      console.error('Registration error:', error)
+      
+      // Provide more specific error messages based on error type
+      let errorMessage = 'Please try again'
+      
+      if (error.code === 409) {
+        errorMessage = 'An account with this email already exists'
+      } else if (error.code === 429) {
+        errorMessage = 'Too many registration attempts. Please try again later.'
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
       toast({
         title: 'Registration failed',
-        description: error.message || 'Please try again',
+        description: errorMessage,
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       })
     } finally {

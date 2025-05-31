@@ -5,14 +5,41 @@ import { Dashboard } from './pages/Dashboard'
 import { Upload } from './pages/Upload'
 import { UploadConfirmation } from './pages/UploadConfirmation'
 import { ExpenseList } from './components/ExpenseList'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { authService } from './services/auth'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  const handleLogout = () => {
-    setIsAuthenticated(false)
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const isAuth = await authService.isAuthenticated()
+        setIsAuthenticated(isAuth)
+      } catch (error) {
+        console.error('Auth check error:', error)
+        setIsAuthenticated(false)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    checkAuth()
+  }, [])
+
+  const handleLogout = async () => {
+    try {
+      await authService.logout()
+      setIsAuthenticated(false)
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
   }
+
+  if (isLoading) {
+    return null // or a loading spinner
+  }
+
 
   return (
     <ChakraProvider>
