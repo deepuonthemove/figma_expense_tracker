@@ -26,9 +26,9 @@ export const Header = ({ onLogout }: HeaderProps) => {
       <Container maxW="container.xl">
         <Flex h={16} alignItems="center" justifyContent="space-between">
           <Flex alignItems="center" gap={8}>
-            <Heading size="md" color="brand.500" cursor="pointer" onClick={() => navigate('/dashboard')}>
-              Expense Tracker
-            </Heading>
+          <Heading size="md" color="brand.500" cursor="pointer" onClick={() => navigate('/dashboard')}>
+            Expense Tracker
+          </Heading>
 
             <HStack spacing={6}>
               <Link

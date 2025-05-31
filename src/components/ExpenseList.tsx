@@ -1,4 +1,4 @@
-import { Box, Table, Thead, Tbody, Tr, Th, Td, Text, Badge, Heading, Button, useToast, Container, HStack, Select, Input, Flex } from '@chakra-ui/react'
+import { Box, Table, Thead, Tbody, Tr, Th, Td, Text, Badge, Heading, Button, useToast, Container, HStack, Select, Input, Flex, Image, Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton, useDisclosure } from '@chakra-ui/react'
 import { useEffect, useState } from 'react'
 import { expenses } from '../services/expenses'
 import type { Expense } from '../services/expenses'
@@ -6,12 +6,19 @@ import { account } from '../config/appwrite'
 import { Header } from './Header'
 import { useNavigate } from 'react-router-dom'
 import { authService } from '../services/auth'
+import { storageService } from '../services/storage'
+
+interface ExpenseWithReceiptUrl extends Expense {
+  receiptUrlFull?: string;
+}
 
 export const ExpenseList = () => {
-  const [expensesList, setExpensesList] = useState<Expense[]>([])
-  const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([])
+  const [expensesList, setExpensesList] = useState<ExpenseWithReceiptUrl[]>([])
+  const [filteredExpenses, setFilteredExpenses] = useState<ExpenseWithReceiptUrl[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null)
+  const { isOpen, onOpen, onClose } = useDisclosure()
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
@@ -33,9 +40,41 @@ export const ExpenseList = () => {
     try {
       const user = await account.get()
       const data = await expenses.list(user.$id)
-      setExpensesList(data)
-      setFilteredExpenses(data)
-    } catch (error) {
+      
+      // Get full receipt URLs for expenses with receipts
+      const expensesWithUrls = await Promise.all(
+        data.map(async (expense) => {
+          if (expense.receiptUrl) {
+            try {
+              const url = await storageService.getFileUrl(expense.receiptUrl)
+              return { ...expense, receiptUrlFull: url.toString() }
+            } catch (error) {
+              console.error('Error getting receipt URL:', error)
+              return expense
+            }
+          }
+          return expense
+        })
+      )
+      
+      setExpensesList(expensesWithUrls)
+      setFilteredExpenses(expensesWithUrls)
+    } catch (error: any) {
+      console.error('Error loading expenses:', error)
+      
+      // Check if it's an authentication error
+      if (error?.code === 401 || error?.code === 403) {
+        toast({
+          title: 'Session Expired',
+          description: 'Please log in again to view your expenses.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        })
+        navigate('/login')
+        return
+      }
+
       toast({
         title: 'Error',
         description: 'Failed to load expenses',
@@ -46,6 +85,10 @@ export const ExpenseList = () => {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const getReceiptUrl = (fileId: string) => {
+    return storageService.getFileUrl(fileId)
   }
 
   const applyFilters = () => {
@@ -97,9 +140,19 @@ export const ExpenseList = () => {
   const handleLogout = async () => {
     try {
       await authService.logout()
+      // Clear the expenses list before navigating
+      setExpensesList([])
+      setFilteredExpenses([])
       navigate('/login')
     } catch (error) {
       console.error('Logout error:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to logout properly',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
     }
   }
 
@@ -108,6 +161,11 @@ export const ExpenseList = () => {
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
   const currentExpenses = filteredExpenses.slice(startIndex, endIndex)
+
+  const handleReceiptClick = (receiptUrl: string) => {
+    setSelectedReceipt(receiptUrl)
+    onOpen()
+  }
 
   return (
     <Box minH="100vh" bg="gray.50">
@@ -171,6 +229,7 @@ export const ExpenseList = () => {
                   <Th>Date</Th>
                   <Th>Description</Th>
                   <Th>Category</Th>
+                  <Th>Receipt</Th>
                   <Th isNumeric>Amount</Th>
                   <Th>Actions</Th>
                 </Tr>
@@ -178,13 +237,13 @@ export const ExpenseList = () => {
               <Tbody>
                 {currentExpenses.length === 0 ? (
                   <Tr>
-                    <Td colSpan={5}>
+                    <Td colSpan={6}>
                       <Text textAlign="center" py={4} color="gray.500">
                         {isLoading ? 'Loading expenses...' : 'No expenses found'}
                       </Text>
                     </Td>
                   </Tr>
-                ) :
+                ) : (
                   currentExpenses.map((expense) => (
                     <Tr key={expense.id} _hover={{ bg: 'gray.50' }}>
                       <Td>{new Date(expense.date).toLocaleDateString()}</Td>
@@ -193,6 +252,23 @@ export const ExpenseList = () => {
                         <Badge colorScheme={getCategoryColor(expense.category)}>
                           {expense.category}
                         </Badge>
+                      </Td>
+                      <Td>
+                        {expense.receiptUrlFull ? (
+                          <Image
+                            src={expense.receiptUrlFull}
+                            alt="Receipt"
+                            boxSize="50px"
+                            objectFit="cover"
+                            borderRadius="md"
+                            cursor="pointer"
+                            _hover={{ transform: 'scale(1.1)' }}
+                            transition="transform 0.2s"
+                            onClick={() => handleReceiptClick(expense.receiptUrlFull!)}
+                          />
+                        ) : (
+                          <Text color="gray.500" fontSize="sm">No receipt</Text>
+                        )}
                       </Td>
                       <Td isNumeric fontWeight="medium">
                         ${expense.amount.toFixed(2)}
@@ -209,7 +285,7 @@ export const ExpenseList = () => {
                       </Td>
                     </Tr>
                   ))
-                }
+                )}
               </Tbody>
             </Table>
           </Box>
@@ -240,6 +316,24 @@ export const ExpenseList = () => {
             </Box>
           )}
         </Box>
+
+        <Modal isOpen={isOpen} onClose={onClose} size="xl">
+          <ModalOverlay />
+          <ModalContent>
+            <ModalCloseButton />
+            <ModalBody p={4}>
+              {selectedReceipt && (
+                <Image
+                  src={selectedReceipt}
+                  alt="Receipt"
+                  maxW="100%"
+                  maxH="80vh"
+                  objectFit="contain"
+                />
+              )}
+            </ModalBody>
+          </ModalContent>
+        </Modal>
       </Container>
     </Box>
   )
