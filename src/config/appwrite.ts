@@ -13,15 +13,15 @@ export const databases = new Databases(client)
 export const storage = new Storage(client)
 
 // Database and Collection IDs
-export const DATABASE_ID = 'expense-tracker'
+export const DATABASE_ID = '682b0b4f001a20205d2f'
 export const COLLECTIONS = {
-  EXPENSES: 'expenses',
-  USERS: 'users'
+  EXPENSES: '683aef0a001c42742342',
+  USERS: '683aef2600166b2fc24d'
 }
 
 // Storage bucket IDs
 export const BUCKETS = {
-  RECEIPTS: 'receipts'
+  RECEIPTS: '683af99b00043f287265'
 }
 
 // Helper function to get user ID

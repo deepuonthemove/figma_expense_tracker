@@ -91,7 +91,7 @@ class AuthService {
       
       // Optionally create session immediately
       if (autoLogin) {
-        const session = await account.createEmailPasswordSession(email, password)
+        // const session = await account.createEmailPasswordSession(email, password)
         
         // Add a small delay to ensure session is fully established
         await new Promise(resolve => setTimeout(resolve, 300))
