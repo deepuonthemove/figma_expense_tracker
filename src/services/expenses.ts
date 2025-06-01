@@ -1,7 +1,7 @@
 import { ID, Query } from 'appwrite'
-import { databases, DATABASE_ID } from '../config/appwrite'
+import { databases, DATABASE_ID, COLLECTIONS } from '../config/appwrite'
 
-const COLLECTION_ID = '683aef0a001c42742342'
+const COLLECTION_ID = COLLECTIONS.EXPENSES
 
 export interface Expense {
   id: string

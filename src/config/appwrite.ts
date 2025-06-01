@@ -1,28 +1,26 @@
 import { Client, Account, Databases, Storage } from 'appwrite'
+import { 
+  APPWRITE_PROJECT_ID, 
+  APPWRITE_ENDPOINT, 
+  DATABASE_ID, 
+  COLLECTIONS, 
+  BUCKETS 
+} from './appwrite-ids'
 
 // Initialize Appwrite client
 // Note: For production, consider using a custom domain as your API endpoint
 // to enable secure cookie-based sessions instead of localStorage
 const client = new Client()
-  .setEndpoint('https://fra.cloud.appwrite.io/v1') // Replace with your Appwrite endpoint
-  .setProject('682b0a6c0038c8da39e2') // Replace with your project ID
+  .setEndpoint(APPWRITE_ENDPOINT)
+  .setProject(APPWRITE_PROJECT_ID)
 
 // Initialize Appwrite services
 export const account = new Account(client)
 export const databases = new Databases(client)
 export const storage = new Storage(client)
 
-// Database and Collection IDs
-export const DATABASE_ID = '682b0b4f001a20205d2f'
-export const COLLECTIONS = {
-  EXPENSES: '683aef0a001c42742342',
-  USERS: '683aef2600166b2fc24d'
-}
-
-// Storage bucket IDs
-export const BUCKETS = {
-  RECEIPTS: '683af99b00043f287265'
-}
+// Export IDs for use in other files
+export { DATABASE_ID, COLLECTIONS, BUCKETS }
 
 // Helper function to get user ID
 export const getUserId = async () => {
